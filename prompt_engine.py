@@ -1,9 +1,10 @@
+import os
+
 import openai
-from secrets import OPEN_AI_KEY
 
 api_endpoint = 'https://api.openai.com/v1/completions'
 
-openai.api_key = OPEN_AI_KEY
+openai.api_key = os.environ.get('OPEN_AI_KEY')
 
 
 def eval_prompt(request, context=None):
