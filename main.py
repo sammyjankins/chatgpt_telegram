@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from prompt_engine import eval_prompt
-from secrets import TG_TOKEN
+from secrets import TG_TOKEN_GPT
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -60,7 +60,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 def main() -> None:
-    application = Application.builder().token(TG_TOKEN).build()
+    application = Application.builder().token(TG_TOKEN_GPT).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
