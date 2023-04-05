@@ -1,7 +1,7 @@
 import logging
 import os
 
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -22,7 +22,6 @@ START_STATE, DIALOGUE_STATE, LOCATION, BIO = range(4)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     await update.message.reply_text(
         "Hi! write me to start a conversation."
     )
@@ -35,11 +34,14 @@ async def dialogue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     dialogue_context = context.user_data.get('dialogue')
     response = eval_prompt(request, dialogue_context)
     if dialogue_context:
-        dialogue_context.append((request, response))
-        if len(dialogue_context) > 10:
+        dialogue_context.extend([{'role': 'user', 'content': request},
+                                 {'role': 'assistant', 'content': response}])
+        if len(dialogue_context) > 20:
             dialogue_context = dialogue_context[1:]
     else:
-        dialogue_context = [(request, response)]
+        dialogue_context = [{'role': 'user', 'content': request},
+                            {'role': 'assistant', 'content': response}]
+
     context.user_data['dialogue'] = dialogue_context
 
     await update.message.reply_text(

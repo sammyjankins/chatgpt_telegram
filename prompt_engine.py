@@ -2,22 +2,26 @@ import os
 
 import openai
 
-api_endpoint = 'https://api.openai.com/v1/completions'
+api_endpoint = 'https://api.openai.com/v1/chat/completions'
 
 openai.api_key = os.environ.get('OPEN_AI_KEY')
 
+SYSTEM_MESSAGE = ("You are a precise and helpful teaching assistant. You explain concepts in great depth using "
+                  "simple terms. You analyze the entire dialogue and communicate with the user in his language.")
+
 
 def eval_prompt(request, context=None):
+    messages = [
+        {'role': 'system', 'content': SYSTEM_MESSAGE},
+        {'role': 'user', 'content': request},
+    ]
     if context:
-        dialogue = ''.join([f"1: {item[0]}\n2: {item[1]}\n" for item in context])
-        prompt = f"continue the dialogue -\n{dialogue}1: {request}\n2: "
-    else:
-        prompt = request
-    response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=400,
-        temperature=0.8
-    )
-    return response['choices'][0]['text']
+        messages = context + messages
 
+    response = openai.ChatCompletion.create(
+        messages=messages,
+        model="gpt-3.5-turbo",
+        max_tokens=800,
+        temperature=0.6
+    )
+    return response['choices'][0]["message"]["content"]
