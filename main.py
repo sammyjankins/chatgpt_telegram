@@ -1,6 +1,7 @@
 import logging
 import os
 
+from openai.error import RateLimitError
 from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
@@ -11,7 +12,7 @@ from telegram.ext import (
     filters,
 )
 
-from prompt_engine import eval_prompt
+from prompt_engine import eval_prompt, num_tokens_from_messages, send_prompt
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -31,16 +32,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def dialogue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     request = update.message.text
-    dialogue_context = context.user_data.get('dialogue')
-    response = eval_prompt(request, dialogue_context)
-    if dialogue_context:
-        dialogue_context.extend([{'role': 'user', 'content': request},
-                                 {'role': 'assistant', 'content': response}])
-        if len(dialogue_context) > 20:
-            dialogue_context = dialogue_context[1:]
-    else:
-        dialogue_context = [{'role': 'user', 'content': request},
-                            {'role': 'assistant', 'content': response}]
+
+    dialogue_context = context.user_data.setdefault('dialogue', [])
+
+    while num_tokens_from_messages(eval_prompt(request, dialogue_context)):
+        context.user_data['dialogue'] = context.user_data.get('dialogue')[1:]
+        dialogue_context = context.user_data.get('dialogue')
+
+    messages = eval_prompt(request, dialogue_context)
+
+    try:
+        response = send_prompt(messages)
+    except RateLimitError:
+        await update.message.reply_text(
+            text='That model is currently overloaded with other requests. You can retry your request.'
+        )
+        return DIALOGUE_STATE
+
+    dialogue_context.extend([{'role': 'user', 'content': request},
+                             {'role': 'assistant', 'content': response}])
 
     context.user_data['dialogue'] = dialogue_context
 
