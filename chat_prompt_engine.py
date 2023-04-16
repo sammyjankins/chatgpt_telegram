@@ -8,7 +8,9 @@ api_endpoint = 'https://api.openai.com/v1/chat/completions'
 openai.api_key = os.environ.get('OPEN_AI_KEY')
 
 SYSTEM_MESSAGE = ("You are a precise and helpful teaching assistant. You explain concepts in great depth using "
-                  "simple terms. You analyze the entire dialogue and communicate with the user in his language.")
+                  "simple terms. You analyze the entire dialogue and communicate with the user in his language."
+                  "In the end of your responses add a separator <::> "
+                  "after the separator put the communication language's googletrans LANGCODE constant")
 
 
 def eval_prompt(request, context=None):
