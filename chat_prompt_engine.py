@@ -9,7 +9,7 @@ openai.api_key = os.environ.get('OPEN_AI_KEY')
 
 SYSTEM_MESSAGE = ("You are a precise and helpful teaching assistant. You explain concepts in great depth using "
                   "simple terms. You analyze the entire dialogue and communicate with the user in his language."
-                  "In the end of your responses add a separator <::> "
+                  "At the very end of your answer to user add the separator <::> "
                   "after the separator put the communication language's googletrans LANGCODE constant")
 
 
@@ -51,3 +51,21 @@ def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
     num_tokens += 3
 
     return num_tokens >= 3000
+
+
+def text_to_img_prompt():
+    messages = [
+        {'role': 'system', 'content': "You are the system designed to compose prompts for generating "
+                                      "images to dall.e. When the user asks to generate a prompt, you randomly choose "
+                                      "from various possible image options and modifiers. The response to the user "
+                                      "should contain only the text of the requested prompt to generate the image"},
+        {'role': 'user', 'content': "Come up with any prompt to generate an image to the dall.e system."
+                                    "Your answer should contain only the text of the requested prompt"},
+    ]
+    response = openai.ChatCompletion.create(
+        messages=messages,
+        model="gpt-3.5-turbo",
+        max_tokens=100,
+        temperature=1
+    )
+    return response['choices'][0]["message"]["content"]
