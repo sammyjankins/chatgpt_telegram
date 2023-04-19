@@ -3,7 +3,7 @@
 
 httpx must be updated to the last version.
 
-In the file "dick" you need to change line 62 to:
+In the file "client.py" you need to change line 62 to:
 ```
 proxies: typing.Dict[str, httpcore.AsyncHTTPProxy] = None,
 ```

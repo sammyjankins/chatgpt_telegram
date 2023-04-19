@@ -14,7 +14,7 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-from chat_prompt_engine import eval_prompt, num_tokens_from_messages, send_prompt, text_to_img_prompt
+from chat_prompt_engine import eval_prompt, num_tokens_from_messages, send_prompt, text_to_img_prompt, error_prompt
 from dalle_engine import request_image_dalle, request_image_edit_dalle, request_image_variation_dalle
 from trans_to_en import detect_and_translate
 
@@ -112,8 +112,7 @@ async def dialogue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     dialogue_context = context.user_data.setdefault('dialogue', [])
 
-    while num_tokens := num_tokens_from_messages(eval_prompt(request, dialogue_context)):
-        logger.info(f"User {user.first_name} using {num_tokens} tokens.")
+    while num_tokens_from_messages(eval_prompt(request, dialogue_context)):
         context.user_data['dialogue'] = context.user_data.get('dialogue')[1:]
         dialogue_context = context.user_data.get('dialogue')
 
@@ -127,11 +126,16 @@ async def dialogue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(await detect_and_translate(text, language))
         return DIALOGUE_STATE
 
-    response_text, language = response.split('<::>')
+    if '###' not in response:
+        text = error_prompt()
+        await update.message.reply_text(await detect_and_translate(text, language))
+        return DIALOGUE_STATE
+
+    response_text, language = response.split('###')
     context.user_data['language'] = language.strip()
 
     dialogue_context.extend([{'role': 'user', 'content': request},
-                             {'role': 'assistant', 'content': response_text}])
+                             {'role': 'assistant', 'content': response}])
 
     context.user_data['dialogue'] = dialogue_context
 
@@ -194,7 +198,7 @@ async def image_generation_session(update: Update, context: ContextTypes.DEFAULT
     await update.effective_chat.send_photo(request_image_dalle(prompt)[0])
 
     text = f'Prompt: {prompt}\n' \
-           f'You can send another text to generate a new image or return to the dialogue by pressing "Cancel"'
+           'You can send another text to generate a new image or return to the dialogue by pressing "Cancel"'
 
     if update.message:
         await update.message.reply_text(
@@ -222,7 +226,7 @@ async def image_edit_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    text = f'Please send an image to edit. It must be a png file no larger than 4 mb with equal width and height.'
+    text = 'Please send an image to edit. It must be a png file no larger than 4 mb with equal width and height.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=await detect_and_translate(text, language), reply_markup=keyboard)
     return ASKING_IM_TO_EDIT_STATE
@@ -236,7 +240,6 @@ async def image_mask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     file = await context.bot.get_file(update.message.document.file_id)
     f_name = file.file_path.split('/')[-1]
-    print(f_name)
     context.user_data['img_to_edit'] = f_name
     await file.download_to_drive(f_name)
 
@@ -248,8 +251,8 @@ async def image_mask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    text = f'Please send the mask. It must be a png file no larger than 4 mb the same size as the original image.' \
-           f'The mask must have a transparent area'
+    text = 'Please send the mask. It must be a png file no larger than 4 mb the same size as the original image.' \
+           'The mask must have a transparent area'
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=await detect_and_translate(text, language), reply_markup=keyboard)
     return ASKING_MASK_TO_EDIT_STATE
@@ -263,7 +266,6 @@ async def image_edit_prompt_handler(update: Update, context: ContextTypes.DEFAUL
 
     file = await context.bot.get_file(update.message.document.file_id)
     f_name = file.file_path.split('/')[-1]
-    print(f_name)
     context.user_data['mask_to_edit'] = f_name
     await file.download_to_drive(f_name)
 
@@ -275,7 +277,7 @@ async def image_edit_prompt_handler(update: Update, context: ContextTypes.DEFAUL
     ]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    text = f'Please provide a prompt to edit image.'
+    text = 'Please provide a prompt to edit image.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=await detect_and_translate(text, language), reply_markup=keyboard)
     return ASKING_PROMPT_TO_EDIT_STATE
@@ -287,7 +289,7 @@ async def image_edit_result(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     language = context.user_data.get('language') or 'en'
 
-    text = f'The image has been edited. Please wait for result.'
+    text = 'The image has been edited. Please wait for result.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=await detect_and_translate(text, language))
     await update.effective_chat.send_photo(request_image_edit_dalle(prompt, context.user_data['img_to_edit'],
@@ -313,8 +315,8 @@ async def image_variation_handler(update: Update, context: ContextTypes.DEFAULT_
     ]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    text = f'Please send an image to create variations. It must be a png file no larger than ' \
-           f'4 mb with equal width and height.'
+    text = 'Please send an image to create variations. It must be a png file no larger than ' \
+           '4 mb with equal width and height.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=await detect_and_translate(text, language), reply_markup=keyboard)
     return ASKING_IM_TO_VARI_STATE
@@ -325,10 +327,9 @@ async def image_variation_result(update: Update, context: ContextTypes.DEFAULT_T
 
     file = await context.bot.get_file(update.message.document.file_id)
     f_name = file.file_path.split('/')[-1]
-    print(f_name)
     await file.download_to_drive(f_name)
 
-    text = f'The variation of the image was created. Please wait for result.'
+    text = 'The variation of the image was created. Please wait for result.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=await detect_and_translate(text, language))
     await update.effective_chat.send_photo(request_image_variation_dalle(f_name))

@@ -8,9 +8,9 @@ api_endpoint = 'https://api.openai.com/v1/chat/completions'
 openai.api_key = os.environ.get('OPEN_AI_KEY')
 
 SYSTEM_MESSAGE = ("You are a precise and helpful teaching assistant. You explain concepts in great depth using "
-                  "simple terms. You analyze the entire dialogue and communicate with the user in his language."
-                  "At the very end of your answer to user add the separator <::> "
-                  "after the separator put the communication language's googletrans LANGCODE constant")
+                  "simple terms. You communicate with the user in his language."
+                  "At the end of every response to the user, add the following ### constant value "
+                  "of the user's language available for googletrans.")
 
 
 def eval_prompt(request, context=None):
@@ -29,7 +29,7 @@ def send_prompt(messages):
         messages=messages,
         model="gpt-3.5-turbo",
         max_tokens=600,
-        temperature=0.6
+        temperature=0.4
     )
     return response['choices'][0]["message"]["content"]
 
@@ -66,6 +66,22 @@ def text_to_img_prompt():
         messages=messages,
         model="gpt-3.5-turbo",
         max_tokens=100,
+        temperature=1
+    )
+    return response['choices'][0]["message"]["content"]
+
+
+def error_prompt():
+    messages = [
+        {'role': 'system', 'content': "You are a chatbot that reluctantly answers questions with sarcastic responses"},
+        {'role': 'user', 'content': "Sarcastically funny notification about an error due to which the bot cannot "
+                                    "respond to the user's message and request to resend the message. "
+                                    "Provide only the message text."},
+    ]
+    response = openai.ChatCompletion.create(
+        messages=messages,
+        model="gpt-3.5-turbo",
+        max_tokens=200,
         temperature=1
     )
     return response['choices'][0]["message"]["content"]
