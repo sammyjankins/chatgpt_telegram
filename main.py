@@ -44,6 +44,16 @@ PATTERN = r'(```[\s\S]*?```)'
 REPLACEMENT = r'<code>\1</code>'
 
 
+async def cancel_keyboard(language):
+    buttons = [
+        [
+            InlineKeyboardButton(text=await detect_and_translate("Cancel", language), callback_data=str(END_CB)),
+        ],
+
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     language = context.user_data.get('language') or 'en'
 
@@ -225,17 +235,10 @@ async def image_edit_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.callback_query.from_user
     logger.info(f"User {user.username} requested editing image.")
 
-    buttons = [
-        [
-            InlineKeyboardButton(text=await detect_and_translate("Cancel", language), callback_data=str(END_CB)),
-        ],
-
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
-
     text = 'Please send an image to edit. It must be a png file no larger than 4 mb with equal width and height.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=await detect_and_translate(text, language), reply_markup=keyboard)
+                                   text=await detect_and_translate(text, language),
+                                   reply_markup=cancel_keyboard(language))
     return ASKING_IM_TO_EDIT_STATE
 
 
@@ -245,24 +248,21 @@ async def image_mask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.message.from_user
     logger.info(f"User {user.username} sent an image to edit.")
 
-    file = await context.bot.get_file(update.message.document.file_id)
-    f_name = file.file_path.split('/')[-1]
-    context.user_data['img_to_edit'] = f_name
-    await file.download_to_drive(f_name)
-
-    buttons = [
-        [
-            InlineKeyboardButton(text=await detect_and_translate("Cancel", language), callback_data=str(END_CB)),
-        ],
-
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
+    await download_image_to_process(update, context, key='img_to_edit')
 
     text = 'Please send the mask. It must be a png file no larger than 4 mb the same size as the original image.' \
            'The mask must have a transparent area'
     await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=await detect_and_translate(text, language), reply_markup=keyboard)
+                                   text=await detect_and_translate(text, language),
+                                   reply_markup=cancel_keyboard(language))
     return ASKING_MASK_TO_EDIT_STATE
+
+
+async def download_image_to_process(update: Update, context: ContextTypes.DEFAULT_TYPE, key: str) -> None:
+    file = await context.bot.get_file(update.message.document.file_id)
+    f_name = file.file_path.split('/')[-1]
+    context.user_data[key] = f_name
+    await file.download_to_drive(f_name)
 
 
 async def image_edit_prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -271,22 +271,12 @@ async def image_edit_prompt_handler(update: Update, context: ContextTypes.DEFAUL
     user = update.message.from_user
     logger.info(f"User {user.username} sent the mask to edit.")
 
-    file = await context.bot.get_file(update.message.document.file_id)
-    f_name = file.file_path.split('/')[-1]
-    context.user_data['mask_to_edit'] = f_name
-    await file.download_to_drive(f_name)
-
-    buttons = [
-        [
-            InlineKeyboardButton(text=await detect_and_translate("Cancel", language), callback_data=str(END_CB)),
-        ],
-
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
+    await download_image_to_process(update, context, key='mask_to_edit')
 
     text = 'Please provide a prompt to edit image.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=await detect_and_translate(text, language), reply_markup=keyboard)
+                                   text=await detect_and_translate(text, language),
+                                   reply_markup=cancel_keyboard(language))
     return ASKING_PROMPT_TO_EDIT_STATE
 
 
@@ -314,18 +304,11 @@ async def image_variation_handler(update: Update, context: ContextTypes.DEFAULT_
     user = update.callback_query.from_user
     logger.info(f"User {user.username} requested image variation.")
 
-    buttons = [
-        [
-            InlineKeyboardButton(text=await detect_and_translate("Cancel", language), callback_data=str(END_CB)),
-        ],
-
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
-
     text = 'Please send an image to create variations. It must be a png file no larger than ' \
            '4 mb with equal width and height.'
     await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=await detect_and_translate(text, language), reply_markup=keyboard)
+                                   text=await detect_and_translate(text, language),
+                                   reply_markup=cancel_keyboard(language))
     return ASKING_IM_TO_VARI_STATE
 
 
