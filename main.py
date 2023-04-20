@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 from openai.error import RateLimitError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -39,6 +40,8 @@ logger = logging.getLogger(__name__)
  ) = range(13)
 
 END_CB = ConversationHandler.END
+PATTERN = r'(```[\s\S]*?```)'
+REPLACEMENT = r'<code>\1</code>'
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -126,21 +129,25 @@ async def dialogue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(await detect_and_translate(text, language))
         return DIALOGUE_STATE
 
-    if '###' not in response:
-        text = error_prompt()
-        await update.message.reply_text(await detect_and_translate(text, language))
-        return DIALOGUE_STATE
+    if '|||' not in response:
+        response_text, language = response, 'en'
+    else:
+        try:
+            response_text, language = response.split('|||')
+        except ValueError as e:
+            logger.info(e)
+            text = error_prompt()
+            await update.message.reply_text(await detect_and_translate(text, language))
+            return DIALOGUE_STATE
 
-    response_text, language = response.split('###')
     context.user_data['language'] = language.strip()
-
     dialogue_context.extend([{'role': 'user', 'content': request},
                              {'role': 'assistant', 'content': response}])
-
     context.user_data['dialogue'] = dialogue_context
 
     await update.message.reply_text(
-        text=response_text
+        text=re.sub(PATTERN, REPLACEMENT, response_text),
+        parse_mode='HTML'
     )
 
     return DIALOGUE_STATE
@@ -355,7 +362,10 @@ def main() -> None:
     application = Application.builder().token(os.environ.get('TG_TOKEN_GPT')).build()
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[
+            CommandHandler("start", start),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, dialogue),
+        ],
         states={
             DIALOGUE_STATE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, dialogue),

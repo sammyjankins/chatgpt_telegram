@@ -9,7 +9,7 @@ openai.api_key = os.environ.get('OPEN_AI_KEY')
 
 SYSTEM_MESSAGE = ("You are a precise and helpful teaching assistant. You explain concepts in great depth using "
                   "simple terms. You communicate with the user in his language."
-                  "At the end of every response to the user, add the following ### constant value "
+                  "At the end of every response to the user, add the following ||| constant value "
                   "of the user's language available for googletrans.")
 
 
