@@ -15,6 +15,8 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
+from html import escape
+
 from chat_prompt_engine import eval_prompt, num_tokens_from_messages, send_prompt, text_to_img_prompt, error_prompt
 from dalle_engine import request_image_dalle, request_image_edit_dalle, request_image_variation_dalle
 from trans_to_en import detect_and_translate
@@ -155,8 +157,9 @@ async def dialogue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                              {'role': 'assistant', 'content': response}])
     context.user_data['dialogue'] = dialogue_context
 
+    text = re.sub(PATTERN, REPLACEMENT, escape(response_text))
     await update.message.reply_text(
-        text=re.sub(PATTERN, REPLACEMENT, response_text),
+        text=text,
         parse_mode='HTML'
     )
 
